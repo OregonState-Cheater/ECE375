@@ -1,0 +1,182 @@
+% template created by: Russell Haering. arr. Joseph Crop
+\documentclass[12pt, letterpaper]{article}
+\usepackage{amssymb,mathtools}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\setlength{\parskip}{1.2ex}    
+\setlength{\parindent}{2em}
+\usepackage[a4paper, textwidth=400pt, left=2cm]{geometry}
+\renewcommand*\familydefault{\ttdefault} %% Only if the base font of the document is to be typewriter style
+
+
+\begin{document}
+
+
+\begin{titlepage}
+    \vspace*{4cm}
+    \begin{flushright}
+    {\huge
+        ECE 375 Lab 2\\[1cm]
+    }
+    {\large
+        Large Number Arithmetic
+    }
+    \end{flushright}
+    \begin{flushleft}
+    Lab Time: Friday 4-6
+    \end{flushleft}
+    \begin{flushright}
+    Aaron Vaughan
+
+    Bradley Heenk
+    
+    \vfill
+    \rule{5in}{.5mm}\\
+    TA Signature
+    \end{flushright}
+
+\end{titlepage}
+
+
+
+\section{Introduction}
+
+The purpose of this lab is to increase our understanding of the use of the AVR instruction set library to implement common arithmetic operations on 16 to 24-bit unsigned binary numbers. Performing arithmetic operations does not require any additional program includes other than the standard .include "m128def.inc" file. We were tasked with coding a 16-bit adder, 16-bit subtractor, a 24-bit multiplier, and a compound function that uses all three of the other subroutines. The stack pointer is used to jump in and out of subroutine calls. The syntax and organization are becoming second nature by now for my lab partner and I.
+
+% The purpose of this lab is to get us familiar with the process of writing our own avr assembly code. This lab uses the LCD screen. This means that we have to include the driver file in order to utilize this additional piece of hardware. The initialization of the stack pointer is crucial for the proper operation of this lab. We learn that without this initialization step, the LCD driver package runs in a continuous loop. 
+% \newline
+% The assignment is to display our name and that of our lab partner with included functionality to swap the lines that they are printed on and clear the screen with the use of the buttons connected to PORTD.
+% \newline
+% While coding this project, my lab partner and I learned how to implement for loops, if statements, and became familiarized with the formatting of the avr assembly code itself. The project reinforced our knowledge of data systems and memory management. The process is not too dissimilar from writing in C. It just takes many many more lines to orchestrate the mnemonics and produce working code.
+
+
+\section{Program Overview}
+
+This program performs addition, subtraction, multiplication and a compound function that uses all three operations.
+The setup is basic, in that we define some register names and call instructions out of the AVR instruction set. The tricky part is when jumping in and out of the subroutine calls, we must push all the registers onto the stack to preserve their values for the main program. Then, when exiting we must pop them back off the stack in reverse order, thus preserving their values. We must allocate some SRAM space to hold our input and output variables for each function. After hard coding the values into the SRAM during simulation, all of the functions can be called one after the other. The data space allocated to the output will be updated upon completion of each of the subroutines and displayed in the memory window in the debugger simulation.
+
+
+%The avr assembly code in this lab displays the text that is reserved in data memory (hard-coded by Bradley and I) on the LCD screen. This is accomplished by reserving program memory for the string data in an array of sequentially accessible char values with a head pointer. The data is then loaded in sequentially in a char by char fashion beginning at the address \$0100. The LCD is 16 char-wide sections in length. We padded our names with spaces to fill the entire screen. The reading and writing of the char values to the LCD screen are accomplished by post-incrementing an index pointer to access the next memory address that a char needs to be written to. It goes through all the values in the Partner Name array. This repeats for the second partner's name on the second line. There are two buttons that can be pressed to initiate the writing of the strings to the LCD. One button puts name one on line one name two on line two and the other switch then swaps the names and lines. The last button (S7) clears the screen by calling the LCDClr function defined in the LCD driver package.
+\newline
+%The details of definitions of registers, constants, subroutines and other important details follow in the next sections.
+
+
+
+\section{Internal Register Definitions and Constants}
+
+Unlike the last lab, we do not have a driver include that sucks up all of the register resources. We had complete freedom to use as many registers as we wanted to implement the subroutines. We defined 6 registers that would be used for performing arithmetic operations on our variables. This configuration allowed us to hold entire 24-bit values in an easily recognizable form. For the use of multiplication function, we needed to use R0, and R1, but in the end, we never actually use the "MUL" instruction. There are two loop counters used. There is a constant value register named "zero" that may have been useful to clear a register value or variable in the SRAM data memory. 
+
+%In this section of code, we set up the required registers and constants. Most of the internal registers are used up in the LCD driver package so we were very restricted as to which registers we had left over to use for the implementation of our algorithm. We set the forward, reverse, and erase values corresponding to the locations of the switches which are active low.
+
+\section{Interrupt Vectors}
+
+There is one interrupt vector within the skeleton code for this lab. It sets up the initial starting point of our main program. Beginning at memory address \$0000 it simply jumps to the initialization routine.
+
+\section{Program Initialization}
+
+The zero register is set to zero in this section. Also the stack pointer must be set up in order to use the push \& pop instructions.
+
+The stack pointer must be initialized to use the stack in the algorithm. This is typically done, as implemented in the our code, to the end of ram. It takes two cycles to perform this because the stack pointer is 16-bits but the register used to communicate with it is only 8-bits wide. Without the use of the stack pointer and use of that type of data structure we would lose track of the main program memory location.
+
+\section{Main Program}
+
+The main program runs through each of the subroutine calls with a "NOP" instruction on either side of it to halt the simulation for use by the graders to check the otput/input values. When each of the subroutines are called, the main program runs in an infinite loop.
+
+Before going into each of the subroutine calls we set up the values of the operands to be used by that subroutine by setting the Z pointer to the location in program memory that holds the value. We then use the LPM instruction to move it to a register and then store it out to the data space memory.
+
+%The main program section of this lab runs in a loop and continuously checks for inputs from the buttons connected to PORTD. It accomplishes this by first storing the PIND values into mpr. It then compares the value of mpr to the hard coded values of the forward, reverse, and clear switches. If a switch is pressed the value on the PIND corresponding to that switch will be 1. If the pressed button matches the condition of the case, then it will send the program to that subroutine to execute the algorithm to execute that command. After a function call, we return back out and loop back up to main to start over again. If no buttons are pressed, the main program loops back and starts over.
+
+
+\section{Subroutines}
+
+In the beginning of each of the subroutines, we use the stack to store the state of the program and at the end, before the return call, we restore the program by popping the values off the stack back to where they go. Also at the beginning of each of the subroutines, we clear the value stored into the solution in the SRAM location. \newline
+
+
+Function Name: ADD16 \newline
+Description: Adds two 16-bit numbers and generates a 24-bit number
+		where the high byte of the result contains the carry
+		out bit.
+
+Function Name: SUB16 \newline
+Description: Subtracts two 16-bit numbers and generates a 16-bit
+		result.
+		
+Function Name: MUL24 \newline
+Description: Multiplies two 24-bit numbers and generates a 48-bit 
+		result using the shift and add technique.
+		
+Function Name: COMPOUND \newline
+Description: Computes the compound expression ((D - E) + F)\^2
+		by making use of SUB16, ADD16, and MUL24.
+
+		D, E, and F are declared in program memory, and must
+		be moved into data memory for use as input operands.
+
+The ADD16 and SUB16 subroutines were cut and paste from previous labs.
+
+%  Subroutine name:	S1\_DISPLAY \newline
+%  Description:	A micro-function for PARTNER\_WRITE to simplify what is said in main. This function sets everything up to display partner 1 on line 1 and partner 2 on line 2
+
+%  Subroutine name: S2\_DISPLAY \newline
+%  Description: A micro-function for PARTNER\_WRITE to simplify what is said in main. This function sets everything up to display partner 2 on line 1 and partner 1 on line 2
+
+% Function name: S8\_CLEAR; \newline
+% Description: This function clears the LCD Screen by calling the; LCDClr in the LCDDriver.asm
+
+% Subroutine name: PARTNER\_WRITE \newline
+% Description: Writes partner based on the line types This function depends on countin being set before being called to either 1 or a 2 to indicate which partner. The is true with count out which correlates to which line mpr is set to: 1 means line 1, 2 means line 2
+
+
+
+% \begin{enumerate}
+%     \item   \textbf{HITRIGHT ROUTINE} 
+%     \newline
+% The HitRight routine first moves the TekBot backwards for roughly 1 second by first sending the Move Backwards command to PORTB followed by a call to the Wait routine.  Upon returning from the Wait routine, the Turn Left command is sent to PORTB to get the TekBot to turn left and then another call to the Wait routine to have the TekBot turn left for roughly another second.  Finally, the HitRight Routine sends a Move Forward command to PORTB to get the TekBot moving forward and then returns from the routine.
+
+% \end{enumerate}
+
+\section{Stored Program Data}
+
+We allocate program memory to store the values of our operands.
+
+\section{Additional Program Includes}
+
+There were no additional program includes for this lab.
+
+\section{Additional Questions}
+\begin{enumerate}
+    \item
+    
+Although we dealt with unsigned numbers in this lab, the ATmega128 microcontroller also has some features which are important for performing signed arithmetic. What does the V flag in the status register indicate? Give an example (in binary) of two 8-bit values that will cause the V flag to be set when they are added together.
+    \newline \newline
+    
+    The V flag is the overflow flag. It gets set when the result of an addition of two numbers result in an incorrect signed value (in two's compliment) If I add 0b01111111 plus 0b00000001 the sum should be decimal 128. In binary, the number is 0b10000000. When read as two's compliment of that number it looks like -128. The value therefore looks like we added two positive numbers and our solution was negative. This is illogical and to signify this, the overflow bit (V flag) is set.
+    \item
+In the skeleton file for this lab, the .BYTE directive was used to allocate some data memory locations for MUL16’s input operands and result. What are some benefits of using this directive to organize your data memory, rather than just declaring some address constants using the .EQU directive?    
+    \newline \newline
+    When researching this question at https://www.microchip.com/webdoc/avrassembler/avrassembler.wb\_directives.html#avrassembler.wb\_directives.EQU, I found the following statement describing the .equ directive: "The EQU directive assigns a value to a label. This label can then be used in later expressions. A label assigned to a value by the EQU directive is a constant and can not be changed or redefined." Not having the ability to redefine the values of these operands puts us at a disadvantage if and only if we want to change these values later and reuse the expressions. Using the .byte directive allows us to reuse the same portion of the data space for later calculations and change the values as we see fit.
+
+
+
+\end{enumerate}
+
+\section{Difficulties}
+
+Implementation of the shift then add multiplication algorithm took a bit of thinking. I realized a few ways to shorten the code after the midterm exam by using the ROR instruction. While writing MUL24 we had some extended jumps that needed to be called and finding a way arround the relative branch jumps was a bit tricky. I ended up setting and clearing the T bit in SREG to indicate when to use my long jump calls.
+
+%Understanding how to use the inputs from the push buttons was a bit difficult. Keeping track of all the data structures while implementing the algorithm with a limited number of registers took a little extra help from Youngbin. The extra credit was difficult to get right. We implemented it two different ways before finding the correct definition of marquee scroll in the lab4 handout.
+
+\section{Conclusion}
+
+In this lab, we were required to implement some basic arithmetic functions using AVR assembly code. The lab was largely uninteresting and tedious. We coded the project, compiled, then debugged for a bit, then set up the break points that will be used by the TA's to check the functionality of our subroutines. One useful thing that I learned was how to hard code values into the data memory from program memory.
+
+%The lab was fun. We learned how important the use of data structures and memory management are, as they pertain to programming a microcontroller. We were tasked with implementing an algorithm in avr assembly language that displayed text strings on an LCD display. We coded, compiled, debugged, compiled again, then loaded the program on our atmega128 boards to see it in action. Memory management and proper use of the stack was important.
+
+%The conclusion should sum up the report along with maybe a personal though on the lab.  For example, in this lab, we were simply required to set up an AVRStudio4 project with an example program, compile this project and then download it onto our TekBot bases.  The result of this program allowed the TekBot to behave in a BumpBot fashion.  The lab was great and allowed us the time to build the TekBot with the AVR board and learn the software for this lab
+
+\section{Source Code}
+
+\begin{verbatim}
+ 
+\end{verbatim}
+\end{document}
